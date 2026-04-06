@@ -57,7 +57,7 @@ class GeometryViewport {
 
   GeometryViewport zoomByFactor(double factor) {
     return copyWith(
-      zoom: (zoom * factor).clamp(18, 90).toDouble(),
+      zoom: (zoom * factor).clamp(1, 90).toDouble(),
     );
   }
 
