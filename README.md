@@ -75,6 +75,18 @@ build/app/outputs/flutter-apk/app-release.apk
 - [APK 파일 바로 보기](artifacts/tri-vector-release.apk)
 - [APK 직접 다운로드](https://github.com/bbangchul/tri-vector/raw/main/artifacts/tri-vector-release.apk)
 
+Windows EXE 다운로드:
+
+1. [Build Windows EXE 실행 결과](https://github.com/bbangchul/tri-vector/actions/runs/24056738921) 페이지를 엽니다.
+2. 페이지 아래 `Artifacts` 섹션으로 이동합니다.
+3. `tri-vector-windows-bundle` 을 다운로드합니다.
+4. 압축을 해제한 뒤 내부의 `.exe` 파일을 실행합니다.
+
+참고:
+
+- `tri-vector-exe` 도 같이 제공되지만, 실제 실행은 필요한 파일이 함께 들어 있는 `tri-vector-windows-bundle` 사용을 권장합니다.
+- 최신 Windows 빌드는 GitHub `Actions` 탭의 `Build Windows EXE` 워크플로우에서 다시 생성할 수 있습니다.
+
 ## 폴더 구조
 
 ```text
