@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:todoey/widgets/geometry_home_page.dart';
+import 'package:todoey/widgets/geometry_app_shell.dart';
 
 void main() {
   runApp(const GeometryApp());
@@ -35,7 +35,7 @@ class GeometryApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const GeometryHomePage(),
+      home: const GeometryAppShell(),
     );
   }
 }

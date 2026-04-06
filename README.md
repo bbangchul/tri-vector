@@ -88,7 +88,10 @@ build/app/outputs/flutter-apk/app-release.apk
 │   ├── models/               # 벡터, 기하 계산, 뷰포트, 결과 모델
 │   ├── painters/             # 3D 캔버스 렌더링 로직
 │   ├── screens/              # 과거 Todo 예제 화면 잔존 파일
-│   └── widgets/              # 메인 UI, 프리뷰, 뷰어, 결과 카드
+│   ├── features/
+│   │   ├── triangle_intersection/  # 삼각형 교차 시각화 기능
+│   │   └── matrix_rref/            # 행렬 연산 + Ax=b + RREF 시각화 기능
+│   └── widgets/              # 앱 셸과 공용 메뉴 페이지
 ├── test/                     # 위젯 테스트
 ├── pubspec.yaml              # 의존성 및 Flutter 설정
 └── README.md                 # 프로젝트 문서
@@ -99,7 +102,7 @@ build/app/outputs/flutter-apk/app-release.apk
 ### `lib/main.dart`
 
 - 앱 진입점
-- `GeometryHomePage` 를 루트 화면으로 사용
+- `GeometryAppShell` 을 루트 화면으로 사용
 
 ### `lib/models/`
 
@@ -108,12 +111,13 @@ build/app/outputs/flutter-apk/app-release.apk
 - `geometry_scene.dart`: 화면에 표시할 점 데이터 구성
 - `vector3.dart`: 3차원 벡터 연산
 - `geometry_result.dart`: 계산 결과 모델
+- `matrix/`: MatrixModel, AugmentedMatrixModel, RowOperation, RREF, Ax=b 해석 엔진
 
 ### `lib/painters/`
 
 - `geometry_painter.dart`: 축, 삼각형, 직선, 점, 선택 상태 렌더링
 
-### `lib/widgets/`
+### `lib/features/triangle_intersection/`
 
 - `geometry_home_page.dart`: 메인 입력/결과 화면
 - `geometry_preview_card.dart`: 메인 화면의 3D 프리뷰
@@ -124,6 +128,12 @@ build/app/outputs/flutter-apk/app-release.apk
 - `geometry_header.dart`: 상단 소개 및 액션 버튼
 - `vector_input_section.dart`: 좌표 입력 섹션 구성
 - `glass_card.dart`: 공통 카드 스타일
+
+### `lib/features/matrix_rref/`
+
+- `matrix_rref_home_page.dart`: 행렬/RREF 기능 메인 페이지
+- `models/matrix_scope.dart`: 1차 범위 정의
+- `widgets/`: 범위 카드와 이후 입력/시각화 컴포넌트
 
 ## 3D 뷰어 동작
 

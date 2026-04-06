@@ -1,0 +1,1 @@
+enum MatrixEntryMode { general, axb }
