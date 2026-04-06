@@ -1,0 +1,60 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Prepare artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          New-Item -ItemType Directory -Force -Path artifacts/tri-vector-windows | Out-Null
+          Copy-Item -Recurse build/windows/x64/runner/Release/* artifacts/tri-vector-windows/
+          $exe = Get-ChildItem artifacts/tri-vector-windows -Filter *.exe | Select-Object -First 1
+          if ($null -eq $exe) {
+            throw "No EXE file was produced by the Windows build."
+          }
+          Copy-Item $exe.FullName artifacts/tri-vector.exe -Force
+          Compress-Archive -Path artifacts/tri-vector-windows/* -DestinationPath artifacts/tri-vector-windows.zip -Force
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tri-vector-exe
+          path: artifacts/tri-vector.exe
+          if-no-files-found: error
+
+      - name: Upload Windows bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tri-vector-windows-bundle
+          path: artifacts/tri-vector-windows.zip
+          if-no-files-found: error
