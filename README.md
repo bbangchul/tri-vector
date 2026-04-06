@@ -19,37 +19,37 @@ Flutter 기반 3D Geometry Visualizer 프로젝트입니다.
 
 입력 좌표, 3D 프리뷰, 계산 결과를 한 화면에서 확인하는 기본 작업 화면입니다.
 
-![메인 계산 화면](readme/Screenshot_1775475645.png)
+<img src="readme/Screenshot_1775475645.png" alt="메인 계산 화면" width="280" />
 
 ### 2. 입력과 결과 확인 흐름
 
 삼각형과 직선 좌표를 조정하면서 교점 결과가 어떻게 바뀌는지 확인하는 화면입니다.
 
-![입력과 결과 확인 흐름](readme/Screenshot_1775475653.png)
+<img src="readme/Screenshot_1775475653.png" alt="입력과 결과 확인 흐름" width="280" />
 
 ### 3. 3D 프리뷰 및 전용 뷰어 진입
 
 메인 화면에서 점 위치를 빠르게 확인하고, 전용 3D 뷰어로 이동하기 전 단계의 화면입니다.
 
-![3D 프리뷰 및 전용 뷰어 진입](readme/Screenshot_1775475658.png)
+<img src="readme/Screenshot_1775475658.png" alt="3D 프리뷰 및 전용 뷰어 진입" width="280" />
 
 ### 4. 전용 3D 뷰어
 
 가로 화면 기준으로 3D 장면을 크게 띄우고 `Iso`, `Front` 시점을 전환할 수 있는 전용 뷰어입니다.
 
-![전용 3D 뷰어](readme/Screenshot_1775475661.png)
+<img src="readme/Screenshot_1775475661.png" alt="전용 3D 뷰어" width="280" />
 
 ### 5. 점 선택과 좌표 표시
 
 3D 장면에서 점을 선택했을 때 하단 좌표 배지로 현재 위치를 바로 확인하는 상태입니다.
 
-![점 선택과 좌표 표시](readme/Screenshot_1775475671.png)
+<img src="readme/Screenshot_1775475671.png" alt="점 선택과 좌표 표시" width="280" />
 
 ### 6. Edit 모드 좌표 수정
 
 `Edit` 모드에서 점을 직접 드래그하거나 좌표 값을 입력해 위치를 수정하는 화면입니다.
 
-![Edit 모드 좌표 수정](readme/Screenshot_1775475678.png)
+<img src="readme/Screenshot_1775475678.png" alt="Edit 모드 좌표 수정" width="280" />
 
 ## 실행 방법
 
@@ -69,6 +69,11 @@ flutter build apk --release
 ```text
 build/app/outputs/flutter-apk/app-release.apk
 ```
+
+다운로드:
+
+- [APK 파일 바로 보기](artifacts/tri-vector-release.apk)
+- [APK 직접 다운로드](https://github.com/bbangchul/tri-vector/raw/main/artifacts/tri-vector-release.apk)
 
 ## 폴더 구조
 
