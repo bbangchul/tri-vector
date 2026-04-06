@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:todoey/models/geometry_engine.dart';
 import 'package:todoey/models/geometry_result.dart';
 import 'package:todoey/models/geometry_scene.dart';
 import 'package:todoey/models/geometry_view.dart';
@@ -24,6 +23,10 @@ class GeometryCanvasCard extends StatefulWidget {
     required this.selectedPointId,
     required this.onPointSelected,
     required this.onPointEdited,
+    this.enablePointEditing = true,
+    this.allowedPresetIds,
+    this.compactLayout = false,
+    this.showLegend = true,
   });
 
   final Vector3 a;
@@ -37,6 +40,10 @@ class GeometryCanvasCard extends StatefulWidget {
   final String? selectedPointId;
   final ValueChanged<String?> onPointSelected;
   final void Function(String pointId, Vector3 position) onPointEdited;
+  final bool enablePointEditing;
+  final List<String>? allowedPresetIds;
+  final bool compactLayout;
+  final bool showLegend;
 
   @override
   State<GeometryCanvasCard> createState() => _GeometryCanvasCardState();
@@ -47,12 +54,23 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
   GeometryViewport _viewport = const GeometryViewport();
   double _scaleStartZoom = 34;
   GeometryInteractionMode _interactionMode = GeometryInteractionMode.orbit;
-  Offset? _lastLocalFocalPoint;
   late final AnimationController _cameraController;
   GeometryViewport? _cameraAnimationStart;
   GeometryViewport? _cameraAnimationEnd;
   String _selectedCameraPresetId = geometryCameraPresets.first.id;
   String? _activeDraggedPointId;
+  double? _activeDraggedPointDepth;
+
+  List<GeometryCameraPreset> get _cameraPresets {
+    final allowedPresetIds = widget.allowedPresetIds;
+    if (allowedPresetIds == null || allowedPresetIds.isEmpty) {
+      return geometryCameraPresets;
+    }
+
+    return geometryCameraPresets
+        .where((preset) => allowedPresetIds.contains(preset.id))
+        .toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -99,10 +117,11 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
   void _handleScaleStart(ScaleStartDetails details, Size size) {
     _cameraController.stop();
     _scaleStartZoom = _viewport.zoom;
-    _lastLocalFocalPoint = details.localFocalPoint;
     _activeDraggedPointId = null;
+    _activeDraggedPointDepth = null;
 
-    if (_interactionMode != GeometryInteractionMode.editPoint) {
+    if (!widget.enablePointEditing ||
+        _interactionMode != GeometryInteractionMode.editPoint) {
       return;
     }
 
@@ -113,28 +132,24 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
     );
     if (hit != null) {
       _activeDraggedPointId = hit.id;
+      _activeDraggedPointDepth = GeometryProjector(_viewport).depthOf(hit.position);
       widget.onPointSelected(hit.id);
     }
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details, Size size) {
-    final previousLocalPoint = _lastLocalFocalPoint ?? details.localFocalPoint;
-    final delta = details.localFocalPoint - previousLocalPoint;
-    _lastLocalFocalPoint = details.localFocalPoint;
-
     if (_interactionMode == GeometryInteractionMode.editPoint &&
+        widget.enablePointEditing &&
         details.pointerCount == 1 &&
-        _activeDraggedPointId != null) {
+        _activeDraggedPointId != null &&
+        _activeDraggedPointDepth != null) {
       final scenePoint = findScenePointById(widget.scenePoints, _activeDraggedPointId);
       if (scenePoint != null) {
         final projector = GeometryProjector(_viewport);
-        final nextPoint = GeometryEngine.dragPointInViewPlane(
-          point: scenePoint.position,
-          screenRight: projector.screenRightAxis(),
-          screenUp: projector.screenUpAxis(),
-          deltaX: delta.dx,
-          deltaY: delta.dy,
-          zoom: _viewport.zoom,
+        final nextPoint = projector.pointFromScreen(
+          offset: details.localFocalPoint,
+          size: size,
+          depth: _activeDraggedPointDepth!,
         );
         widget.onPointEdited(scenePoint.id, nextPoint);
       }
@@ -145,7 +160,7 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
       final orbitFactor = details.pointerCount > 1 ? 0.0075 : 0.011;
       var nextViewport = _viewport.orbit(
         deltaYaw: details.focalPointDelta.dx * orbitFactor,
-        deltaPitch: -details.focalPointDelta.dy * orbitFactor,
+        deltaPitch: details.focalPointDelta.dy * orbitFactor,
       );
 
       if (details.scale != 1.0) {
@@ -159,8 +174,8 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
   }
 
   void _handleScaleEnd(ScaleEndDetails details) {
-    _lastLocalFocalPoint = null;
     _activeDraggedPointId = null;
+    _activeDraggedPointDepth = null;
   }
 
   void _handlePointerSignal(PointerSignalEvent signal) {
@@ -211,6 +226,10 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
   }
 
   String _interactionHelpText() {
+    if (!widget.enablePointEditing) {
+      return '드래그로 회전, 마우스 휠 또는 핀치로 확대/축소, 점 탭으로 선택할 수 있습니다.';
+    }
+
     switch (_interactionMode) {
       case GeometryInteractionMode.orbit:
         return '드래그로 회전, 마우스 휠 또는 핀치로 확대/축소, 점 탭으로 선택할 수 있습니다.';
@@ -225,164 +244,281 @@ class _GeometryCanvasCardState extends State<GeometryCanvasCard>
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '3D Visualization',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _interactionHelpText(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              SegmentedButton<GeometryInteractionMode>(
-                segments: GeometryInteractionMode.values
-                    .map(
-                      (mode) => ButtonSegment<GeometryInteractionMode>(
-                        value: mode,
-                        icon: Icon(_modeIcon(mode)),
-                        label: Text(_modeLabel(mode)),
-                      ),
-                    )
-                    .toList(growable: false),
-                selected: {_interactionMode},
-                onSelectionChanged: (selection) {
-                  setState(() {
-                    _interactionMode = selection.first;
-                    _activeDraggedPointId = null;
-                  });
-                },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isHeightBounded = constraints.maxHeight.isFinite;
+          final compactLayout =
+              widget.compactLayout || (isHeightBounded && constraints.maxHeight < 760);
+
+          final children = <Widget>[
+            Text(
+              '3D Visualization',
+              style: TextStyle(
+                fontSize: compactLayout ? 20 : 22,
+                fontWeight: FontWeight.w700,
               ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ...geometryCameraPresets.map(
-                    (preset) => ChoiceChip(
-                      label: Text(preset.label),
-                      selected: _selectedCameraPresetId == preset.id,
-                      onSelected: (_) {
-                        _animateToViewport(
-                          preset.viewport,
-                          presetId: preset.id,
-                        );
-                      },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _interactionHelpText(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                height: 1.45,
+                fontSize: compactLayout ? 13 : 14,
+              ),
+            ),
+            SizedBox(height: compactLayout ? 12 : 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                if (widget.enablePointEditing)
+                  SegmentedButton<GeometryInteractionMode>(
+                    segments: GeometryInteractionMode.values
+                        .map(
+                          (mode) => ButtonSegment<GeometryInteractionMode>(
+                            value: mode,
+                            icon: Icon(_modeIcon(mode)),
+                            label: Text(_modeLabel(mode)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    selected: {_interactionMode},
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _interactionMode = selection.first;
+                        _activeDraggedPointId = null;
+                      });
+                    },
+                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ..._cameraPresets.map(
+                      (preset) => ChoiceChip(
+                        label: Text(preset.label),
+                        selected: _selectedCameraPresetId == preset.id,
+                        onSelected: (_) {
+                          _animateToViewport(
+                            preset.viewport,
+                            presetId: preset.id,
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Custom'),
-                    selected: _selectedCameraPresetId == 'custom',
-                    onSelected: (_) {},
-                  ),
+                    ChoiceChip(
+                      label: const Text('Custom'),
+                      selected: _selectedCameraPresetId == 'custom',
+                      onSelected: (_) {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: compactLayout ? 12 : 16),
+          ];
+
+          if (isHeightBounded) {
+            children.add(
+              Expanded(
+                child: _CanvasViewport(
+                  viewport: _viewport,
+                  interactionMode: _interactionMode,
+                  isEditingPoint: isEditingPoint,
+                  a: widget.a,
+                  b: widget.b,
+                  c: widget.c,
+                  p1: widget.p1,
+                  p2: widget.p2,
+                  result: widget.result,
+                  hasError: widget.hasError,
+                  scenePoints: widget.scenePoints,
+                  selectedPointId: widget.selectedPointId,
+                  selectedCameraPresetId: _selectedCameraPresetId,
+                  onPointerSignal: _handlePointerSignal,
+                  onTap: _handleTap,
+                  onScaleStart: _handleScaleStart,
+                  onScaleUpdate: _handleScaleUpdate,
+                  onScaleEnd: _handleScaleEnd,
+                  onResetView: _resetView,
+                ),
+              ),
+            );
+          } else {
+            children.add(
+              AspectRatio(
+                aspectRatio: 1.35,
+                child: _CanvasViewport(
+                  viewport: _viewport,
+                  interactionMode: _interactionMode,
+                  isEditingPoint: isEditingPoint,
+                  a: widget.a,
+                  b: widget.b,
+                  c: widget.c,
+                  p1: widget.p1,
+                  p2: widget.p2,
+                  result: widget.result,
+                  hasError: widget.hasError,
+                  scenePoints: widget.scenePoints,
+                  selectedPointId: widget.selectedPointId,
+                  selectedCameraPresetId: _selectedCameraPresetId,
+                  onPointerSignal: _handlePointerSignal,
+                  onTap: _handleTap,
+                  onScaleStart: _handleScaleStart,
+                  onScaleUpdate: _handleScaleUpdate,
+                  onScaleEnd: _handleScaleEnd,
+                  onResetView: _resetView,
+                ),
+              ),
+            );
+          }
+
+          if (widget.showLegend) {
+            children.add(SizedBox(height: compactLayout ? 8 : 12));
+            children.add(
+              Wrap(
+                spacing: 16,
+                runSpacing: 10,
+                children: const [
+                  _LegendChip(id: GeometryPointIds.triangleA, label: 'Triangle A'),
+                  _LegendChip(id: GeometryPointIds.triangleB, label: 'Triangle B'),
+                  _LegendChip(id: GeometryPointIds.triangleC, label: 'Triangle C'),
+                  _LegendChip(id: GeometryPointIds.lineP1, label: 'Line P1'),
+                  _LegendChip(id: GeometryPointIds.lineP2, label: 'Line P2'),
+                  _LegendChip(id: GeometryPointIds.intersectionQ, label: 'Intersection Q'),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          AspectRatio(
-            aspectRatio: 1.35,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = Size(constraints.maxWidth, constraints.maxHeight);
+            );
+          }
 
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Listener(
-                    onPointerSignal: _handlePointerSignal,
-                    child: GestureDetector(
-                      onTapUp: (details) => _handleTap(details.localPosition, size),
-                      onDoubleTap: _resetView,
-                      onScaleStart: (details) => _handleScaleStart(details, size),
-                      onScaleUpdate: (details) => _handleScaleUpdate(details, size),
-                      onScaleEnd: _handleScaleEnd,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(0xFF08111F),
-                                  const Color(0xFF0B1324),
-                                  const Color(0xFF060A12).withValues(alpha: 0.95),
-                                ],
-                              ),
-                            ),
-                            child: CustomPaint(
-                              painter: GeometryPainter(
-                                a: widget.a,
-                                b: widget.b,
-                                c: widget.c,
-                                p1: widget.p1,
-                                p2: widget.p2,
-                                result: widget.result,
-                                hasError: widget.hasError,
-                                viewport: _viewport,
-                                scenePoints: widget.scenePoints,
-                                selectedPointId: widget.selectedPointId,
-                                interactionMode: _interactionMode,
-                                isEditingPoint: isEditingPoint,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: FilledButton.tonalIcon(
-                              onPressed: _resetView,
-                              icon: const Icon(Icons.threed_rotation),
-                              label: const Text('Reset View'),
-                            ),
-                          ),
-                          Positioned(
-                            left: 12,
-                            bottom: 12,
-                            child: _OverlayInfo(
-                              viewport: _viewport,
-                              interactionMode: _interactionMode,
-                              selectedPoint: findScenePointById(
-                                widget.scenePoints,
-                                widget.selectedPointId,
-                              ),
-                              selectedCameraPresetId: _selectedCameraPresetId,
-                              isDraggingPoint: isEditingPoint,
-                            ),
-                          ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CanvasViewport extends StatelessWidget {
+  const _CanvasViewport({
+    required this.viewport,
+    required this.interactionMode,
+    required this.isEditingPoint,
+    required this.a,
+    required this.b,
+    required this.c,
+    required this.p1,
+    required this.p2,
+    required this.result,
+    required this.hasError,
+    required this.scenePoints,
+    required this.selectedPointId,
+    required this.selectedCameraPresetId,
+    required this.onPointerSignal,
+    required this.onTap,
+    required this.onScaleStart,
+    required this.onScaleUpdate,
+    required this.onScaleEnd,
+    required this.onResetView,
+  });
+
+  final GeometryViewport viewport;
+  final GeometryInteractionMode interactionMode;
+  final bool isEditingPoint;
+  final Vector3 a;
+  final Vector3 b;
+  final Vector3 c;
+  final Vector3 p1;
+  final Vector3 p2;
+  final GeometryResult? result;
+  final bool hasError;
+  final List<GeometryScenePoint> scenePoints;
+  final String? selectedPointId;
+  final String selectedCameraPresetId;
+  final ValueChanged<PointerSignalEvent> onPointerSignal;
+  final void Function(Offset localPosition, Size size) onTap;
+  final void Function(ScaleStartDetails details, Size size) onScaleStart;
+  final void Function(ScaleUpdateDetails details, Size size) onScaleUpdate;
+  final GestureScaleEndCallback onScaleEnd;
+  final VoidCallback onResetView;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Listener(
+            onPointerSignal: onPointerSignal,
+            child: GestureDetector(
+              onTapUp: (details) => onTap(details.localPosition, size),
+              onDoubleTap: onResetView,
+              onScaleStart: (details) => onScaleStart(details, size),
+              onScaleUpdate: (details) => onScaleUpdate(details, size),
+              onScaleEnd: onScaleEnd,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF08111F),
+                          const Color(0xFF0B1324),
+                          const Color(0xFF060A12).withValues(alpha: 0.95),
                         ],
                       ),
                     ),
+                    child: CustomPaint(
+                      painter: GeometryPainter(
+                        a: a,
+                        b: b,
+                        c: c,
+                        p1: p1,
+                        p2: p2,
+                        result: result,
+                        hasError: hasError,
+                        viewport: viewport,
+                        scenePoints: scenePoints,
+                        selectedPointId: selectedPointId,
+                        interactionMode: interactionMode,
+                        isEditingPoint: isEditingPoint,
+                      ),
+                    ),
                   ),
-                );
-              },
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: FilledButton.tonalIcon(
+                      onPressed: onResetView,
+                      icon: const Icon(Icons.threed_rotation),
+                      label: const Text('Reset View'),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: _OverlayInfo(
+                      viewport: viewport,
+                      interactionMode: interactionMode,
+                      selectedPoint: findScenePointById(scenePoints, selectedPointId),
+                      selectedCameraPresetId: selectedCameraPresetId,
+                      isDraggingPoint: isEditingPoint,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 10,
-            children: const [
-              _LegendChip(id: GeometryPointIds.triangleA, label: 'Triangle A'),
-              _LegendChip(id: GeometryPointIds.triangleB, label: 'Triangle B'),
-              _LegendChip(id: GeometryPointIds.triangleC, label: 'Triangle C'),
-              _LegendChip(id: GeometryPointIds.lineP1, label: 'Line P1'),
-              _LegendChip(id: GeometryPointIds.lineP2, label: 'Line P2'),
-              _LegendChip(id: GeometryPointIds.intersectionQ, label: 'Intersection Q'),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -5,10 +5,11 @@ import 'package:todoey/models/geometry_exception.dart';
 import 'package:todoey/models/geometry_result.dart';
 import 'package:todoey/models/geometry_scene.dart';
 import 'package:todoey/models/vector3.dart';
-import 'package:todoey/widgets/geometry_canvas_card.dart';
 import 'package:todoey/widgets/geometry_control_panel.dart';
 import 'package:todoey/widgets/geometry_header.dart';
+import 'package:todoey/widgets/geometry_preview_card.dart';
 import 'package:todoey/widgets/geometry_results_card.dart';
+import 'package:todoey/widgets/geometry_viewer_page.dart';
 
 class GeometryHomePage extends StatefulWidget {
   const GeometryHomePage({super.key});
@@ -184,21 +185,37 @@ class _GeometryHomePageState extends State<GeometryHomePage> {
     });
   }
 
-  void _updatePointFromCanvas(String pointId, Vector3 position) {
-    switch (pointId) {
-      case GeometryPointIds.triangleA:
-        _applyGeometryValues(a: position, b: _b, c: _c, p1: _p1, p2: _p2);
-      case GeometryPointIds.triangleB:
-        _applyGeometryValues(a: _a, b: position, c: _c, p1: _p1, p2: _p2);
-      case GeometryPointIds.triangleC:
-        _applyGeometryValues(a: _a, b: _b, c: position, p1: _p1, p2: _p2);
-      case GeometryPointIds.lineP1:
-        _applyGeometryValues(a: _a, b: _b, c: _c, p1: position, p2: _p2);
-      case GeometryPointIds.lineP2:
-        _applyGeometryValues(a: _a, b: _b, c: _c, p1: _p1, p2: position);
-      case GeometryPointIds.intersectionQ:
-        return;
+  Future<void> _openViewer() async {
+    final viewerResult = await Navigator.of(context).push<GeometryViewerResult>(
+      MaterialPageRoute<GeometryViewerResult>(
+        builder: (_) => GeometryViewerPage(
+          a: _a,
+          b: _b,
+          c: _c,
+          p1: _p1,
+          p2: _p2,
+          result: _result,
+          hasError: _errorMessage != null,
+          scenePoints: _scenePoints,
+          initialSelectedPointId: _selectedPointId,
+        ),
+      ),
+    );
+
+    if (!mounted || viewerResult == null) {
+      return;
     }
+
+    _applyGeometryValues(
+      a: viewerResult.a,
+      b: viewerResult.b,
+      c: viewerResult.c,
+      p1: viewerResult.p1,
+      p2: viewerResult.p2,
+    );
+    setState(() {
+      _selectedPointId = viewerResult.selectedPointId;
+    });
   }
 
   @override
@@ -257,7 +274,7 @@ class _GeometryHomePageState extends State<GeometryHomePage> {
                           const SizedBox(width: 20),
                           Expanded(
                             flex: 6,
-                            child: GeometryCanvasCard(
+                            child: GeometryPreviewCard(
                               a: _a,
                               b: _b,
                               c: _c,
@@ -267,12 +284,7 @@ class _GeometryHomePageState extends State<GeometryHomePage> {
                               hasError: _errorMessage != null,
                               scenePoints: scenePoints,
                               selectedPointId: selectedPointId,
-                              onPointSelected: (value) {
-                                setState(() {
-                                  _selectedPointId = value;
-                                });
-                              },
-                              onPointEdited: _updatePointFromCanvas,
+                              onOpenViewer: _openViewer,
                             ),
                           ),
                         ],
@@ -284,7 +296,7 @@ class _GeometryHomePageState extends State<GeometryHomePage> {
                         onReset: _resetInputs,
                       ),
                       const SizedBox(height: 20),
-                      GeometryCanvasCard(
+                      GeometryPreviewCard(
                         a: _a,
                         b: _b,
                         c: _c,
@@ -294,12 +306,7 @@ class _GeometryHomePageState extends State<GeometryHomePage> {
                         hasError: _errorMessage != null,
                         scenePoints: scenePoints,
                         selectedPointId: selectedPointId,
-                        onPointSelected: (value) {
-                          setState(() {
-                            _selectedPointId = value;
-                          });
-                        },
-                        onPointEdited: _updatePointFromCanvas,
+                        onOpenViewer: _openViewer,
                       ),
                     ],
                     const SizedBox(height: 20),

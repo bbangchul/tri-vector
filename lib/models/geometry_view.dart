@@ -95,6 +95,40 @@ class GeometryProjector {
     ).normalize();
   }
 
+  Vector3 screenForwardAxis() {
+    final sinY = math.sin(viewport.yaw);
+    final cosY = math.cos(viewport.yaw);
+    final sinX = math.sin(viewport.pitch);
+    final cosX = math.cos(viewport.pitch);
+
+    return Vector3(
+      -sinY * cosX,
+      sinX,
+      cosY * cosX,
+    ).normalize();
+  }
+
+  double depthOf(Vector3 point3D) {
+    return point3D.dot(screenForwardAxis());
+  }
+
+  Vector3 pointFromScreen({
+    required Offset offset,
+    required Size size,
+    required double depth,
+  }) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final local = offset - center;
+    final scale = viewport.zoom * (1 + depth * 0.02);
+    final x1 = local.dx / scale;
+    final y1 = -local.dy / scale;
+
+    return screenRightAxis()
+        .scale(x1)
+        .add(screenUpAxis().scale(y1))
+        .add(screenForwardAxis().scale(depth));
+  }
+
   Offset project(Vector3 point3D, Size size) {
     final cosY = math.cos(viewport.yaw);
     final sinY = math.sin(viewport.yaw);

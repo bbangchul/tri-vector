@@ -18,6 +18,7 @@ class GeometryPainter extends CustomPainter {
     required this.selectedPointId,
     required this.interactionMode,
     required this.isEditingPoint,
+    this.showOnlyPoints = false,
   });
 
   final Vector3 a;
@@ -32,6 +33,7 @@ class GeometryPainter extends CustomPainter {
   final String? selectedPointId;
   final GeometryInteractionMode interactionMode;
   final bool isEditingPoint;
+  final bool showOnlyPoints;
 
   GeometryProjector get _projector => GeometryProjector(viewport);
 
@@ -58,6 +60,18 @@ class GeometryPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _paintBackground(canvas, size);
     _paintAxes(canvas, size);
+
+    if (showOnlyPoints) {
+      for (final scenePoint in scenePoints) {
+        _paintPoint(
+          canvas,
+          size,
+          scenePoint,
+          isSelected: scenePoint.id == selectedPointId,
+        );
+      }
+      return;
+    }
 
     if (hasError || result == null) {
       _paintHint(canvas, size, '삼각형과 직선 입력이 유효해야 시각화됩니다.');

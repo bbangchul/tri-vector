@@ -9,7 +9,7 @@ void main() {
 
     expect(find.text('Triangle / Line Intersection'), findsOneWidget);
     expect(find.text('Input Controls'), findsOneWidget);
-    expect(find.text('3D Visualization'), findsOneWidget);
+    expect(find.text('3D Points Preview'), findsOneWidget);
     expect(find.text('Computed Output'), findsOneWidget);
     expect(find.textContaining('Q = (0.3, 0.3, 0)'), findsWidgets);
     expect(find.textContaining('Intersection on segment = YES'), findsOneWidget);
