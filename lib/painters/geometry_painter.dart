@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:todoey/models/formatters.dart';
 import 'package:todoey/models/geometry_result.dart';
 import 'package:todoey/models/geometry_scene.dart';
 import 'package:todoey/models/geometry_view.dart';
@@ -36,6 +39,20 @@ class GeometryPainter extends CustomPainter {
   final bool showOnlyPoints;
 
   GeometryProjector get _projector => GeometryProjector(viewport);
+
+  double get _axisExtent {
+    final points = [a, b, c, p1, p2];
+    var maxCoordinate = 0.0;
+
+    for (final point in points) {
+      maxCoordinate = math.max(
+        maxCoordinate,
+        math.max(point.x.abs(), math.max(point.y.abs(), point.z.abs())),
+      );
+    }
+
+    return maxCoordinate < 4 ? 4 : maxCoordinate;
+  }
 
   static Color colorForPointId(String id) {
     switch (id) {
@@ -118,9 +135,34 @@ class GeometryPainter extends CustomPainter {
   }
 
   void _paintAxes(Canvas canvas, Size size) {
-    _paintAxis(canvas, size, Vector3.zero, const Vector3(4.5, 0, 0), const Color(0xFFEF4444), 'X');
-    _paintAxis(canvas, size, Vector3.zero, const Vector3(0, 4.5, 0), const Color(0xFF22C55E), 'Y');
-    _paintAxis(canvas, size, Vector3.zero, const Vector3(0, 0, 4.5), const Color(0xFF38BDF8), 'Z');
+    final axisExtent = _axisExtent;
+    _paintAxis(
+      canvas,
+      size,
+      Vector3.zero,
+      Vector3(axisExtent, 0, 0),
+      const Color(0xFFEF4444),
+      'X',
+      axisExtent,
+    );
+    _paintAxis(
+      canvas,
+      size,
+      Vector3.zero,
+      Vector3(0, axisExtent, 0),
+      const Color(0xFF22C55E),
+      'Y',
+      axisExtent,
+    );
+    _paintAxis(
+      canvas,
+      size,
+      Vector3.zero,
+      Vector3(0, 0, axisExtent),
+      const Color(0xFF38BDF8),
+      'Z',
+      axisExtent,
+    );
   }
 
   void _paintAxis(
@@ -130,6 +172,7 @@ class GeometryPainter extends CustomPainter {
     Vector3 end,
     Color color,
     String label,
+    double axisExtent,
   ) {
     final paint = Paint()
       ..color = color.withValues(alpha: 0.78)
@@ -138,7 +181,7 @@ class GeometryPainter extends CustomPainter {
     final endOffset = _projector.project(end, size);
 
     canvas.drawLine(startOffset, endOffset, paint);
-    _paintAxisTicks(canvas, size, end, color);
+    _paintAxisTicks(canvas, size, end, color, axisExtent);
     _drawLabel(canvas, endOffset + const Offset(8, -8), label, color);
   }
 
@@ -229,7 +272,13 @@ class GeometryPainter extends CustomPainter {
     _drawLabel(canvas, center + const Offset(10, -22), scenePoint.label, color);
   }
 
-  void _paintAxisTicks(Canvas canvas, Size size, Vector3 axisEnd, Color color) {
+  void _paintAxisTicks(
+    Canvas canvas,
+    Size size,
+    Vector3 axisEnd,
+    Color color,
+    double axisExtent,
+  ) {
     final startOffset = _projector.project(Vector3.zero, size);
     final endOffset = _projector.project(axisEnd, size);
     final direction = endOffset - startOffset;
@@ -242,19 +291,17 @@ class GeometryPainter extends CustomPainter {
       ..color = color.withValues(alpha: 0.62)
       ..strokeWidth = 1.3;
     final axisDirection = axisEnd.normalize();
+    const fractions = [-1.0, -0.5, 0.5, 1.0];
 
-    for (int tick = -4; tick <= 4; tick++) {
-      if (tick == 0) {
-        continue;
-      }
-
-      final worldPoint = axisDirection.scale(tick.toDouble());
+    for (final fraction in fractions) {
+      final tickValue = axisExtent * fraction;
+      final worldPoint = axisDirection.scale(tickValue);
       final projected = _projector.project(worldPoint, size);
       canvas.drawLine(projected - normal * 5, projected + normal * 5, tickPaint);
       _drawLabel(
         canvas,
         projected + normal * 8 + const Offset(2, 2),
-        '$tick',
+        formatDouble(tickValue, axisExtent >= 10 ? 0 : 2),
         color.withValues(alpha: 0.82),
         fontSize: 10,
       );
@@ -312,6 +359,7 @@ class GeometryPainter extends CustomPainter {
         selectedPointId != oldDelegate.selectedPointId ||
         scenePoints != oldDelegate.scenePoints ||
         interactionMode != oldDelegate.interactionMode ||
-        isEditingPoint != oldDelegate.isEditingPoint;
+        isEditingPoint != oldDelegate.isEditingPoint ||
+        showOnlyPoints != oldDelegate.showOnlyPoints;
   }
 }
