@@ -48,7 +48,7 @@ int main()
     // dot(D, normal)
     double denom = D.x * normal.x + D.y * normal.y + D.z * normal.z;
 
-    if (fabs(denom) < 1e-9)
+    if (fabs(denom) < 1e-9) // 1e-9 == 0으로 판단
     {
         cout << "직선이 평면과 평행합니다.\n";
         return 0;
