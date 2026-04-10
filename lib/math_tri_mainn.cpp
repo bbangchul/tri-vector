@@ -46,6 +46,8 @@ int main()
         BA.x * CA.y - BA.y * CA.x);
 
     // dot(D, normal)
+    // denom 은 분모, D * n = 0이면 평행, 아니면 직선이 뚫고 지나감
+
     double denom = D.x * normal.x + D.y * normal.y + D.z * normal.z;
 
     if (fabs(denom) < 1e-9) // 1e-9 == 0으로 판단
@@ -55,6 +57,7 @@ int main()
     }
 
     Vec3 AP1 = A - P1;
+    // numerator : 분자
     double numerator = AP1.x * normal.x + AP1.y * normal.y + AP1.z * normal.z;
 
     double t = numerator / denom;
